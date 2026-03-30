@@ -16,13 +16,27 @@ st.set_page_config(
 st.markdown("""
 <style>
     [data-testid="stAppViewContainer"] { background-color: #0e1117; }
-    .metric-card {
+    /* st.metric 카드 스타일 override */
+    [data-testid="stMetric"] {
         background: linear-gradient(135deg, #1e2130, #2a2d3e);
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
         border: 1px solid #2e3250;
+        border-radius: 12px;
+        padding: 1rem 1.2rem !important;
         text-align: center;
-        margin-bottom: 0.5rem;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem !important;
+        color: #aaaaaa !important;
+        justify-content: center;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.4rem !important;
+        color: #ffffff !important;
+        justify-content: center;
+    }
+    [data-testid="stMetricDelta"] {
+        font-size: 1rem !important;
+        justify-content: center;
     }
     .section-title {
         font-size: 1.2rem;
@@ -130,27 +144,29 @@ st.caption(
 
 # ── KPI 카드 ─────────────────────────────────────────────────
 st.markdown('<div class="section-title">📌 20년 누적 수익률</div>', unsafe_allow_html=True)
-cols = st.columns(len(company_names))
-for i, name in enumerate(company_names):
+
+# 한 행에 최대 4개씩 나눠서 표시
+CARDS_PER_ROW = 4
+kpi_data = []
+for name in company_names:
     series = df[name].dropna()
     if len(series) < 2:
         continue
     total_ret = (series.iloc[-1] / series.iloc[0] - 1) * 100
     cur_price = series.iloc[-1]
-    color     = "#00ff88" if total_ret >= 0 else "#ff4444"
     flag      = "🇰🇷" if name in KR_TICKERS else "🇺🇸"
-    with cols[i]:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:0.78rem;color:#aaa;">{flag} {name}</div>
-            <div style="font-size:1.2rem;font-weight:700;color:#fff;">
-                {display_price(name, cur_price)}
-            </div>
-            <div style="font-size:0.95rem;font-weight:600;color:{color};">
-                {total_ret:+,.0f}%
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    kpi_data.append((flag, name, cur_price, total_ret))
+
+for row_start in range(0, len(kpi_data), CARDS_PER_ROW):
+    row_items = kpi_data[row_start:row_start + CARDS_PER_ROW]
+    cols = st.columns(CARDS_PER_ROW)
+    for col, (flag, name, cur_price, total_ret) in zip(cols, row_items):
+        with col:
+            st.metric(
+                label=f"{flag} {name}",
+                value=display_price(name, cur_price),
+                delta=f"{total_ret:+,.1f}%",
+            )
 
 st.markdown("---")
 
@@ -316,6 +332,9 @@ fig5.update_layout(
     margin=dict(l=60, r=20, t=20, b=60),
 )
 st.plotly_chart(fig5, use_container_width=True)
+
+st.markdown("---")
+st.caption("⚠️ 본 대시보드는 교육·참고 목적이며 투자 권유가 아닙니다.")
 
 st.markdown("---")
 st.caption("⚠️ 본 대시보드는 교육·참고 목적이며 투자 권유가 아닙니다.")
